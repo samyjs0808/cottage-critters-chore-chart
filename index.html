@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cottage Critters Chore Chart</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Karla:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --cream: #FAF3E7;
+    --forest: #2F4A3C;
+    --forest-dark: #223529;
+    --moss: #7A9A7E;
+    --moss-light: #D8E4D4;
+    --butter: #E8B94E;
+    --clay: #C4694F;
+    --ink: #26312B;
+    --card: #FFFFFF;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--cream);
+    color: var(--ink);
+    font-family: 'Karla', sans-serif;
+    padding: 32px 16px 80px;
+  }
+
+  .wrap { max-width: 640px; margin: 0 auto; }
+
+  header { text-align: center; margin-bottom: 8px; }
+
+  h1 {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 700;
+    font-size: 2.1rem;
+    color: var(--forest);
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+
+  .week-tag {
+    display: inline-block;
+    background: var(--forest);
+    color: var(--cream);
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 4px 14px;
+    border-radius: 999px;
+    margin-top: 6px;
+  }
+
+  .section-label {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: var(--forest);
+    margin: 28px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-label .dot {
+    width: 9px; height: 9px; border-radius: 50%;
+  }
+  .dot.bathroom { background: var(--clay); }
+  .dot.common { background: var(--moss); }
+
+  .chore-list { display: flex; flex-direction: column; gap: 10px; }
+
+  .chore-card {
+    background: var(--card);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 1px 2px rgba(47,74,60,0.08);
+    border: 1px solid transparent;
+    transition: border-color 0.15s ease, opacity 0.15s ease;
+  }
+
+  .chore-card.done {
+    border-color: var(--moss-light);
+    opacity: 0.6;
+  }
+
+  .critter {
+    font-size: 1.4rem;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+  }
+
+  .chore-info { flex: 1; min-width: 0; }
+
+  .chore-name {
+    font-weight: 500;
+    font-size: 0.98rem;
+    color: var(--ink);
+  }
+  .chore-card.done .chore-name { text-decoration: line-through; color: #7c8a80; }
+
+  .chore-person {
+    font-size: 0.82rem;
+    color: var(--forest);
+    opacity: 0.75;
+    margin-top: 1px;
+  }
+
+  input[type="checkbox"] {
+    appearance: none;
+    width: 24px; height: 24px;
+    border-radius: 7px;
+    border: 2px solid var(--moss);
+    flex-shrink: 0;
+    cursor: pointer;
+    display: grid;
+    place-content: center;
+    background: var(--card);
+  }
+  input[type="checkbox"]:checked {
+    background: var(--butter);
+    border-color: var(--butter);
+  }
+  input[type="checkbox"]:checked::after {
+    content: "✓";
+    color: var(--forest-dark);
+    font-size: 15px;
+    font-weight: 700;
+  }
+  input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--forest);
+    outline-offset: 2px;
+  }
+
+  .next-week {
+    margin-top: 40px;
+    border-top: 1px dashed var(--moss);
+    padding-top: 18px;
+  }
+
+  .next-week summary {
+    font-family: 'Fredoka', sans-serif;
+    font-weight: 600;
+    color: var(--forest);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .next-week summary::-webkit-details-marker { display: none; }
+  .next-week summary::before {
+    content: "▸";
+    transition: transform 0.15s ease;
+  }
+  .next-week[open] summary::before { transform: rotate(90deg); }
+
+  .preview-list { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .preview-row {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 0.88rem;
+    padding: 8px 4px;
+    border-bottom: 1px solid var(--moss-light);
+  }
+  .preview-row .critter { font-size: 1.1rem; }
+  .preview-row .name { flex: 1; color: var(--ink); }
+  .preview-row .person { color: var(--forest); opacity: 0.7; }
+
+  .empty, .loading, .error {
+    text-align: center;
+    padding: 24px;
+    color: var(--forest);
+    opacity: 0.7;
+    font-size: 0.9rem;
+  }
+  .error { color: var(--clay); }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <h1>🏡 Cottage Critters</h1>
+    <span class="week-tag" id="week-tag">Loading week…</span>
+  </header>
+
+  <div id="current-week">
+    <p class="loading">Fetching this week's chores…</p>
+  </div>
+
+  <details class="next-week">
+    <summary>Preview next week</summary>
+    <div class="preview-list" id="next-week-list">
+      <p class="loading">Fetching next week's chores…</p>
+    </div>
+  </details>
+</div>
+
+<script>
+  // ---- Fill these in from Supabase → Project Settings → API ----
+  const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+  // ----------------------------------------------------------------
+
+  const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  // Critter assigned per floor — a quiet visual shortcut for "which floor"
+  const FLOOR_CRITTER = {
+    "basement": "🦡",
+    "second": "🐿️",
+    "third": "🦉"
+  };
+  const CRITTER_FALLBACK = "🐾";
+
+  function getMonday(d) {
+    const date = new Date(d);
+    const day = date.getDay();
+    const diff = (day === 0 ? -6 : 1) - day;
+    date.setDate(date.getDate() + diff);
+    date.setHours(0, 0, 0, 0);
+    return date;
+  }
+
+  function formatDate(d) {
+    return d.toISOString().split("T")[0];
+  }
+
+  function formatWeekLabel(mondayDate) {
+    const opts = { month: "short", day: "numeric" };
+    return mondayDate.toLocaleDateString(undefined, opts);
+  }
+
+  async function fetchWeek(weekStartStr) {
+    const { data, error } = await supabase
+      .from("assignments")
+      .select("id, completed, chores(name, type, floor), people(name)")
+      .eq("week_start", weekStartStr);
+
+    if (error) throw error;
+    return data || [];
+  }
+
+  function critterFor(floor) {
+    return FLOOR_CRITTER[(floor || "").toLowerCase()] || CRITTER_FALLBACK;
+  }
+
+  function renderCurrentWeek(rows) {
+    const container = document.getElementById("current-week");
+    container.innerHTML = "";
+
+    if (rows.length === 0) {
+      container.innerHTML = '<p class="empty">No chores found for this week yet — check that this week\'s assignments have been generated.</p>';
+      return;
+    }
+
+    const bathroom = rows.filter(r => r.chores?.type === "bathroom");
+    const common = rows.filter(r => r.chores?.type !== "bathroom");
+
+    container.appendChild(renderSection("Bathroom duty", "bathroom", bathroom));
+    container.appendChild(renderSection("Common chores", "common", common));
+  }
+
+  function renderSection(title, kind, rows) {
+    const section = document.createElement("div");
+    if (rows.length === 0) return section;
+
+    const label = document.createElement("div");
+    label.className = "section-label";
+    label.innerHTML = `<span class="dot ${kind}"></span> ${title}`;
+    section.appendChild(label);
+
+    const list = document.createElement("div");
+    list.className = "chore-list";
+
+    rows.forEach(row => {
+      const card = document.createElement("label");
+      card.className = "chore-card" + (row.completed ? " done" : "");
+
+      card.innerHTML = `
+        <span class="critter">${critterFor(row.chores?.floor)}</span>
+        <span class="chore-info">
+          <div class="chore-name">${row.chores?.name ?? "Unknown chore"}</div>
+          <div class="chore-person">${row.people?.name ?? "Unassigned"}</div>
+        </span>
+        <input type="checkbox" ${row.completed ? "checked" : ""} data-id="${row.id}" />
+      `;
+
+      const checkbox = card.querySelector("input");
+      checkbox.addEventListener("change", async (e) => {
+        const checked = e.target.checked;
+        card.classList.toggle("done", checked);
+        const { error } = await supabase
+          .from("assignments")
+          .update({
+            completed: checked,
+            completed_at: checked ? new Date().toISOString() : null
+          })
+          .eq("id", row.id);
+        if (error) {
+          // revert on failure
+          e.target.checked = !checked;
+          card.classList.toggle("done", !checked);
+          alert("Couldn't save that — check your connection and try again.");
+        }
+      });
+
+      list.appendChild(card);
+    });
+
+    section.appendChild(list);
+    return section;
+  }
+
+  function renderNextWeek(rows) {
+    const container = document.getElementById("next-week-list");
+    container.innerHTML = "";
+
+    if (rows.length === 0) {
+      container.innerHTML = '<p class="empty">Next week\'s chores haven\'t been generated yet.</p>';
+      return;
+    }
+
+    rows.forEach(row => {
+      const div = document.createElement("div");
+      div.className = "preview-row";
+      div.innerHTML = `
+        <span class="critter">${critterFor(row.chores?.floor)}</span>
+        <span class="name">${row.chores?.name ?? "Unknown chore"}</span>
+        <span class="person">${row.people?.name ?? "Unassigned"}</span>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  async function init() {
+    const currentMonday = getMonday(new Date());
+    const nextMonday = new Date(currentMonday);
+    nextMonday.setDate(nextMonday.getDate() + 7);
+
+    document.getElementById("week-tag").textContent =
+      `Week of ${formatWeekLabel(currentMonday)}`;
+
+    try {
+      const currentRows = await fetchWeek(formatDate(currentMonday));
+      renderCurrentWeek(currentRows);
+    } catch (err) {
+      document.getElementById("current-week").innerHTML =
+        `<p class="error">Couldn't load this week's chores: ${err.message}</p>`;
+    }
+
+    try {
+      const nextRows = await fetchWeek(formatDate(nextMonday));
+      renderNextWeek(nextRows);
+    } catch (err) {
+      document.getElementById("next-week-list").innerHTML =
+        `<p class="error">Couldn't load next week's preview: ${err.message}</p>`;
+    }
+  }
+
+  init();
+</script>
+
+</body>
+</html>
