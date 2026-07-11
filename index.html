@@ -239,7 +239,7 @@
   }
 
   async function fetchWeek(weekStartStr) {
-    const { data, error } = await supabase
+    const { data, error } = await sb
       .from("assignments")
       .select("id, completed, chores(name, type, floor), people(name)")
       .eq("week_start", weekStartStr);
@@ -297,7 +297,7 @@
       checkbox.addEventListener("change", async (e) => {
         const checked = e.target.checked;
         card.classList.toggle("done", checked);
-        const { error } = await supabase
+        const { error } = await sb
           .from("assignments")
           .update({
             completed: checked,
