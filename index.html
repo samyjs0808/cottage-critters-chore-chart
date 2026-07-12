@@ -65,6 +65,19 @@
     align-items: center;
     gap: 8px;
   }
+  
+  .reminder-banner {
+  background: var(--butter);
+  color: var(--forest-dark);
+  font-family: 'Karla', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: 10px;
+  margin: 0 auto 20px;
+  max-width: 480px;
+}
 
   .section-label .dot {
     width: 9px; height: 9px; border-radius: 50%;
@@ -191,6 +204,10 @@
     <h1>🏡 Cottage Critters</h1>
     <span class="week-tag" id="week-tag">Loading week…</span>
   </header>
+
+  <div class="reminder-banner">
+  ⏰ chores are due by end of day Monday. this chore schedule resets Monday at midnight!
+  </div>
 
   <div id="current-week">
     <p class="loading">Fetching this week's chores…</p>
