@@ -55,6 +55,41 @@
     margin-top: 6px;
   }
 
+  .reminder-banner {
+    background: var(--butter);
+    color: var(--forest-dark);
+    font-family: 'Karla', sans-serif;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-align: center;
+    padding: 10px 16px;
+    border-radius: 10px;
+    margin: 18px auto 0;
+    max-width: 480px;
+  }
+
+  .subtask-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 4px 0;
+  }
+  .subtask-row .subtask-label {
+    flex: 1;
+    font-size: 0.88rem;
+    color: var(--ink);
+  }
+  .subtask-row.done .subtask-label {
+    text-decoration: line-through;
+    color: #7c8a80;
+  }
+  .subtask-row input[type="checkbox"] {
+    width: 20px; height: 20px; border-radius: 6px;
+  }
+  .chore-card.multi { align-items: flex-start; flex-direction: column; }
+  .chore-card.multi .chore-info { width: 100%; margin-bottom: 4px; }
+  .chore-card.multi .subtasks { width: 100%; display: flex; flex-direction: column; }
+
   .section-label {
     font-family: 'Fredoka', sans-serif;
     font-weight: 600;
@@ -65,19 +100,6 @@
     align-items: center;
     gap: 8px;
   }
-
-  .reminder-banner {
-  background: var(--butter);
-  color: var(--forest-dark);
-  font-family: 'Karla', sans-serif;
-  font-weight: 700;
-  font-size: 0.85rem;
-  text-align: center;
-  padding: 10px 16px;
-  border-radius: 10px;
-  margin: 0 auto 20px;
-  max-width: 480px;
-}
 
   .section-label .dot {
     width: 9px; height: 9px; border-radius: 50%;
@@ -206,8 +228,7 @@
   </header>
 
   <div class="reminder-banner">
-  ⏰ chores are due by end of day Monday. 
-     this schedule resets midnight Monday!
+    ⏰ Chores are due by end of day Monday. The schedule resets Monday at midnight.
   </div>
 
   <div id="current-week">
@@ -224,8 +245,8 @@
 
 <script>
   // ---- Fill these in from Supabase → Project Settings → API ----
-  const SUPABASE_URL = "https://ephnytqvyponimyxqklj.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_6hRNTy-aRCHeregICM5pkg_knlmxgTp";
+  const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
   // ----------------------------------------------------------------
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -259,7 +280,7 @@
   async function fetchWeek(weekStartStr) {
     const { data, error } = await sb
       .from("assignments")
-      .select("id, completed, chores(name, type, floor), people(name)")
+      .select("id, completed, completed_subtasks, chores(name, type, floor, subtasks), people(name)")
       .eq("week_start", weekStartStr);
 
     if (error) throw error;
@@ -299,36 +320,100 @@
     list.className = "chore-list";
 
     rows.forEach(row => {
-      const card = document.createElement("label");
-      card.className = "chore-card" + (row.completed ? " done" : "");
+      const hasSubtasks = Array.isArray(row.chores?.subtasks) && row.chores.subtasks.length > 0;
+      const card = document.createElement("div");
+      card.className = "chore-card" + (hasSubtasks ? " multi" : "") + (row.completed ? " done" : "");
 
-      card.innerHTML = `
-        <span class="critter">${critterFor(row.chores?.floor)}</span>
-        <span class="chore-info">
-          <div class="chore-name">${row.chores?.name ?? "Unknown chore"}</div>
-          <div class="chore-person">${row.people?.name ?? "Unassigned"}</div>
-        </span>
-        <input type="checkbox" ${row.completed ? "checked" : ""} data-id="${row.id}" />
+      const info = document.createElement("span");
+      info.className = "chore-info";
+      info.innerHTML = `
+        <div class="chore-name">${row.chores?.name ?? "Unknown chore"}</div>
+        <div class="chore-person">${row.people?.name ?? "Unassigned"}</div>
       `;
 
-      const checkbox = card.querySelector("input");
-      checkbox.addEventListener("change", async (e) => {
-        const checked = e.target.checked;
-        card.classList.toggle("done", checked);
-        const { error } = await sb
-          .from("assignments")
-          .update({
-            completed: checked,
-            completed_at: checked ? new Date().toISOString() : null
-          })
-          .eq("id", row.id);
-        if (error) {
-          // revert on failure
-          e.target.checked = !checked;
-          card.classList.toggle("done", !checked);
-          alert("Couldn't save that — check your connection and try again.");
-        }
-      });
+      if (!hasSubtasks) {
+        card.innerHTML = `<span class="critter">${critterFor(row.chores?.floor)}</span>`;
+        card.appendChild(info);
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.checked = !!row.completed;
+        checkbox.addEventListener("change", async (e) => {
+          const checked = e.target.checked;
+          card.classList.toggle("done", checked);
+          const { error } = await sb
+            .from("assignments")
+            .update({
+              completed: checked,
+              completed_at: checked ? new Date().toISOString() : null
+            })
+            .eq("id", row.id);
+          if (error) {
+            e.target.checked = !checked;
+            card.classList.toggle("done", !checked);
+            alert("Couldn't save that — check your connection and try again.");
+          }
+        });
+        card.appendChild(checkbox);
+      } else {
+        const header = document.createElement("span");
+        header.style.display = "flex";
+        header.style.alignItems = "center";
+        header.style.gap = "10px";
+        header.innerHTML = `<span class="critter">${critterFor(row.chores?.floor)}</span>`;
+        header.appendChild(info);
+        card.appendChild(header);
+
+        const subtasksWrap = document.createElement("div");
+        subtasksWrap.className = "subtasks";
+
+        const labels = row.chores.subtasks;
+        const state = Array.isArray(row.completed_subtasks) && row.completed_subtasks.length === labels.length
+          ? [...row.completed_subtasks]
+          : labels.map(() => false);
+
+        labels.forEach((label, i) => {
+          const subRow = document.createElement("label");
+          subRow.className = "subtask-row" + (state[i] ? " done" : "");
+
+          const span = document.createElement("span");
+          span.className = "subtask-label";
+          span.textContent = label;
+
+          const cb = document.createElement("input");
+          cb.type = "checkbox";
+          cb.checked = !!state[i];
+
+          cb.addEventListener("change", async (e) => {
+            const checked = e.target.checked;
+            state[i] = checked;
+            subRow.classList.toggle("done", checked);
+            const allDone = state.every(Boolean);
+            card.classList.toggle("done", allDone);
+
+            const { error } = await sb
+              .from("assignments")
+              .update({
+                completed_subtasks: state,
+                completed: allDone,
+                completed_at: allDone ? new Date().toISOString() : null
+              })
+              .eq("id", row.id);
+            if (error) {
+              state[i] = !checked;
+              e.target.checked = !checked;
+              subRow.classList.toggle("done", !checked);
+              alert("Couldn't save that — check your connection and try again.");
+            }
+          });
+
+          subRow.appendChild(cb);
+          subRow.appendChild(span);
+          subtasksWrap.appendChild(subRow);
+        });
+
+        card.appendChild(subtasksWrap);
+      }
 
       list.appendChild(card);
     });
