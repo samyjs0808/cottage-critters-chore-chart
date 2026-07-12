@@ -247,6 +247,7 @@
   // ---- Fill these in from Supabase → Project Settings → API ----
   const SUPABASE_URL = "https://ephnytqvyponimyxqklj.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_6hRNTy-aRCHeregICM5pkg_knlmxgTp";
+
   // ----------------------------------------------------------------
 
   const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -280,7 +281,7 @@
   async function fetchWeek(weekStartStr) {
     const { data, error } = await sb
       .from("assignments")
-      .select("id, completed, completed_subtasks, chores(name, type, floor, subtasks), people(name)")
+      .select("id, completed, completed_subtasks, chores(name, type, floor, subtasks), people(name, floor)")
       .eq("week_start", weekStartStr);
 
     if (error) throw error;
@@ -300,8 +301,9 @@
       return;
     }
 
-    const bathroom = rows.filter(r => r.chores?.type === "bathroom");
-    const common = rows.filter(r => r.chores?.type !== "bathroom");
+    const isBathroom = r => r.chores?.type === "bathroom" || r.chores?.name?.toLowerCase().includes("bathroom");
+    const bathroom = rows.filter(isBathroom);
+    const common = rows.filter(r => !isBathroom(r));
 
     container.appendChild(renderSection("Bathroom duty", "bathroom", bathroom));
     container.appendChild(renderSection("Common chores", "common", common));
@@ -332,7 +334,7 @@
       `;
 
       if (!hasSubtasks) {
-        card.innerHTML = `<span class="critter">${critterFor(row.chores?.floor)}</span>`;
+        card.innerHTML = `<span class="critter">${critterFor(row.chores?.floor || row.people?.floor)}</span>`;
         card.appendChild(info);
 
         const checkbox = document.createElement("input");
@@ -360,7 +362,7 @@
         header.style.display = "flex";
         header.style.alignItems = "center";
         header.style.gap = "10px";
-        header.innerHTML = `<span class="critter">${critterFor(row.chores?.floor)}</span>`;
+        header.innerHTML = `<span class="critter">${critterFor(row.chores?.floor || row.people?.floor)}</span>`;
         header.appendChild(info);
         card.appendChild(header);
 
@@ -435,7 +437,7 @@
       const div = document.createElement("div");
       div.className = "preview-row";
       div.innerHTML = `
-        <span class="critter">${critterFor(row.chores?.floor)}</span>
+        <span class="critter">${critterFor(row.chores?.floor || row.people?.floor)}</span>
         <span class="name">${row.chores?.name ?? "Unknown chore"}</span>
         <span class="person">${row.people?.name ?? "Unassigned"}</span>
       `;
